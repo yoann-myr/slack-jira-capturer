@@ -213,14 +213,21 @@ async function getReactionCandidates(input: {
     });
   }
 
-  // Dedup: drop candidates whose permalink is already filed in MPR.
+  // Dedup: drop candidates whose permalink is already filed.
+  // Slack permalinks vary by query string (?thread_ts=...&cid=...) depending
+  // on how they were generated — strip query/hash on both sides to compare
+  // canonically.
   if (candidates.length === 0) return { candidates };
   const filed = await findFiledPermalinks();
-  const fresh = candidates.filter((c) => !filed.has(c.permalink));
+  const fresh = candidates.filter((c) => !filed.has(normalizePermalink(c.permalink)));
   console.log(
     `[dedup] ${candidates.length} candidates, ${candidates.length - fresh.length} already filed, ${fresh.length} fresh`,
   );
   return { candidates: fresh };
+}
+
+function normalizePermalink(url: string): string {
+  return url.split(/[?#]/)[0];
 }
 
 // =================== Atlassian ===================
@@ -268,10 +275,11 @@ async function findFiledPermalinks(): Promise<Set<string>> {
   )) as { issues?: { fields: { description: unknown } }[] };
 
   const filed = new Set<string>();
-  const re = /https:\/\/[\w-]+\.slack\.com\/archives\/[A-Z0-9]+\/p\d+/g;
+  // Match permalinks including any query string, then normalize.
+  const re = /https:\/\/[\w-]+\.slack\.com\/archives\/[A-Z0-9]+\/p\d+\S*/g;
   for (const issue of result.issues ?? []) {
     const text = adfToText(issue.fields.description);
-    for (const m of text.matchAll(re)) filed.add(m[0]);
+    for (const m of text.matchAll(re)) filed.add(normalizePermalink(m[0]));
   }
   return filed;
 }
