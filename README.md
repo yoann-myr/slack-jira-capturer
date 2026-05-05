@@ -1,0 +1,185 @@
+# Slack-to-Jira Capturer
+
+A Claude Managed Agent that watches `#product-management` in Slack and files
+emoji-reacted messages into Jira:
+
+- 💡 (`:bulb:`) → **Polaris Idea** in project **MPR**
+- 🐛 (`:bug:`) → **Bug** in project **NET**
+
+After filing, posts a threaded confirmation reply in Slack with a link to
+the new issue. Manually triggered for now (`npm run capture`).
+
+## How it works
+
+```
+   Slack #product-management            Anthropic                    Jira
+            │                              │                          ▲
+   💡 / 🐛 reactions                       │                          │
+            │                              │                          │
+            └─────► [run.ts]──── kickoff ──►│                          │
+                       ▲                    │                          │
+                       │                    │  agent loop              │
+                       │                    │  (Opus 4.7)              │
+                       │                    │     │                    │
+   custom tools ◄──────┼────────────────────┘     │                    │
+   (host-side):        │                          │                    │
+   - get_reaction_candidates ──► Slack Web API    │                    │
+   - create_polaris_idea     ─────────────────────┴──► REST → MPR / NET ┘
+   - create_bug_ticket       ──► (also posts threaded Slack reply)
+```
+
+**Why custom tools, not MCP?** Slack and Atlassian credentials live in
+`.env` on the host. The agent's sandbox container never sees them —
+`agent.custom_tool_use` events are handled by `run.ts`, which holds the
+secrets. No vault, no OAuth dance.
+
+## Files
+
+| File | Purpose |
+|---|---|
+| [agent.yaml](agent.yaml) | Agent config: system prompt, tools, pinned MPR field IDs |
+| [environment.yaml](environment.yaml) | Container config (cloud, unrestricted networking) |
+| [setup.ts](setup.ts) | One-time: creates the env + agent, prints IDs |
+| [update.ts](update.ts) | Pushes a new agent version after editing `agent.yaml` |
+| [run.ts](run.ts) | Per-run: opens session, handles custom tools, streams output |
+| [.env](.env) | Secrets + agent/env IDs (git-ignored) |
+
+## Running it
+
+```sh
+cd agent-experiment
+npm run capture
+```
+
+Default window is **7 days** of Slack history (covers reactions added a few
+days late). Dedup looks back 7 days in Jira to avoid double-filing.
+
+## Updating the agent
+
+After editing `agent.yaml`:
+
+```sh
+npm run update    # creates a new agent version, sessions auto-use the latest
+```
+
+The agent is **persistent and versioned** — `npm run setup` is a one-time
+step. Don't run it again unless you want a fresh agent.
+
+## Reactions and routing
+
+| Reaction | Project | Issue type | Fields filled |
+|---|---|---|---|
+| 💡 `:bulb:` (or `:light_bulb:`) | MPR (Polaris) | Idea (id `10169`) | Title, Description, Product area (auto-classified or pre-tagged), Planning status = *Investigate* |
+| 🐛 `:bug:` | NET | Bug (id `10004`) | Title (summary), Description (with Slack link) |
+
+Both produce a threaded Slack reply on the original message:
+> 🤖 *Created a* `Idea` *from this message:* `MPR-NNN: Title` • Status: *Investigate*
+
+## Message classification (💡 ideas only)
+
+| Slack source | Detection | Title format | Product area |
+|---|---|---|---|
+| **Ybug** bug report | bot_message + `Reported via Ybug` footer | `"Ybug - <ticket title>"` | LLM classifies |
+| **Slack Workflow** template | text contains `submitted feedback` + `Title:`/`Product:` bullets | Title field verbatim | **Pre-tagged** Product → mapped directly to MPR option |
+| Generic chat message | anything else | LLM-generated summary | LLM classifies |
+
+Pre-extraction happens deterministically in `run.ts` (parsers `parseYbug`,
+`parseTemplate`); the LLM only judges generic messages and titles when no
+pre-title is set. Bugs (🐛) skip product-area entirely.
+
+## Dedup
+
+Before processing, `get_reaction_candidates` JQL-searches **both projects**
+for tickets created in the last 7 days whose description contains a Slack
+permalink, builds a set of already-filed permalinks, and filters them out.
+
+```jql
+((project = MPR AND issuetype = Idea) OR (project = NET AND issuetype = Bug))
+AND created >= -7d AND description ~ "slack.com"
+```
+
+If a message was filed >7 days ago and re-reacted, dedup will miss it.
+Widen the window in `findFiledPermalinks` if needed.
+
+## MPR field IDs (pinned)
+
+Discovered on first run, baked into `agent.yaml`:
+
+- **Idea issue type:** `10169`
+- **Product area** field: `customfield_11018`
+  - User interfaces: `11267`
+  - Smart control: `11268`
+  - Integrations: `11269`
+  - Reporting & Insights: `11270`
+  - Zone asset adaptation: `11273`
+- **Planning status** field: `customfield_10754`
+  - Investigate: `11275`
+
+## NET field IDs (pinned)
+
+- **Bug issue type:** `10004` (hard-coded in `run.ts` as `NET_BUG_ISSUE_TYPE_ID`)
+
+## Required environment variables (`.env`)
+
+```
+SLACK_BOT_TOKEN=xoxb-...
+ATLASSIAN_SITE=myrspoven.atlassian.net
+ATLASSIAN_EMAIL=yoann@myrspoven.com
+ATLASSIAN_API_TOKEN=...
+ANTHROPIC_API_KEY=sk-ant-api03-...
+AGENT_ID=agent_...
+ENV_ID=env_...
+```
+
+The `.env` file must be **UTF-8** (Windows PowerShell defaults to UTF-16 BOM
+which breaks Node — convert with `iconv -f UTF-16LE -t UTF-8` if needed).
+
+## Slack scopes required
+
+Bot Token Scopes (set in api.slack.com/apps → OAuth & Permissions):
+
+- `channels:history` — read messages from public channels
+- `channels:read` — resolve `#product-management` to a channel ID
+- `groups:history` + `groups:read` — same for private channels
+- `reactions:read` — see emoji reactions
+- `users:read` — resolve user IDs to display names
+- `chat:write` — post threaded confirmation replies
+
+After adding scopes you must **Reinstall to Workspace** for the bot token
+to gain them. The token string itself doesn't change.
+
+## Troubleshooting
+
+| Symptom | Likely cause |
+|---|---|
+| `Could not resolve authentication method` | Running inside Claude Code's bash (presets `ANTHROPIC_API_KEY=""`). Run from a regular PowerShell/terminal instead. |
+| `npm.ps1 cannot be loaded because running scripts is disabled` | One-time fix: `Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned` |
+| `Channel #X not found or bot not invited` | Bot needs `/invite @<bot-name>` in the channel |
+| `[slack reply] failed: missing_scope` | Add `chat:write` to bot scopes and reinstall the app |
+| `[dedup] 0 candidates already filed` but you see duplicates in MPR/NET | Existing tickets don't have the Slack permalink in their description. Dedup only catches tickets this agent filed. |
+| Idea created with wrong Product area | The `Product:` field text in the Workflow form doesn't match any of the 5 known options. Check the form's options. |
+| Agent says "no candidates" but you reacted | Reaction emoji might be a custom workspace emoji or a variant (`:bulb_solid:`, etc.). Only `:bulb:` / `:light_bulb:` / `:bug:` are matched. |
+
+## Next steps (not implemented)
+
+- **Trigger automation** — wire `npm run capture` to a daily cron (GitHub
+  Actions recommended), a button in the existing Vite/Express backoffice,
+  or a Slack slash command.
+- **Multi-channel** — parameterize the channel list, or run for several
+  channels per session.
+- **Smarter dedup** — match on Slack `ts` rather than full permalink to
+  survive reposts.
+- **More reactions / projects** — extend `detectReaction` and add
+  `create_<kind>_ticket` for other project routings.
+
+## Cost estimate
+
+Per run with dedup working:
+
+| Scenario | Cost |
+|---|---|
+| 0 candidates (most days) | ~$0.02 |
+| 1 issue created | ~$0.05 |
+| 3 issues created | ~$0.10 |
+
+Daily cron: typically **$1–3 / month** for a single channel.

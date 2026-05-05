@@ -1,0 +1,5 @@
+name: slack-polaris-env
+config:
+  type: cloud
+  networking:
+    type: unrestricted

@@ -1,0 +1,31 @@
+name: Capture Slack ideas/bugs
+
+on:
+  schedule:
+    # 08:00 UTC daily ≈ 09:00 (winter) / 10:00 (summer) Stockholm
+    - cron: "0 8 * * *"
+  workflow_dispatch:
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - run: npm ci
+
+      - run: npm run capture
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          ATLASSIAN_SITE: ${{ secrets.ATLASSIAN_SITE }}
+          ATLASSIAN_EMAIL: ${{ secrets.ATLASSIAN_EMAIL }}
+          ATLASSIAN_API_TOKEN: ${{ secrets.ATLASSIAN_API_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          AGENT_ID: ${{ secrets.AGENT_ID }}
+          ENV_ID: ${{ secrets.ENV_ID }}
