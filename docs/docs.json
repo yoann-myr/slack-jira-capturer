@@ -16,6 +16,12 @@
       {
         "group": "Reference",
         "pages": ["reactions", "troubleshooting"]
+      },
+      {
+        "group": "Documentations",
+        "pages": [
+          "test-docs"
+        ]
       }
     ]
   },
