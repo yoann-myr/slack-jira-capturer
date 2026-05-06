@@ -1,0 +1,104 @@
+---
+title: "release-notes"
+---
+
+# Release Notes — April 2026
+
+**Version 2026.4**
+
+---
+
+## Highlights
+
+This release advances the AI vs. Reference framework with extended zone control support and richer outdoor temperature predictions. The Data Platform completes its migration to Iceberg and introduces daily baseline training pipelines, improving AI reliability and coverage across more buildings. On the platform side, BackOffice gets two new power tools: an AI Control diagnostic page and an automatic transformations generator — both designed to reduce manual setup work. Integrations expand significantly with Fabege write support, Ouman historical read, and FidelixAnalytics added as a new data source. A broad set of fixes improves discovery stability, signal handling, and edge cases around daylight saving transitions.
+
+---
+
+## MyPortal — Customers
+
+**Signal Viewer**
+
+- Weather and experimental signals are now available in Signal Viewer, providing broader environmental context.
+- Signal data points response now includes outdoor temperature predictions.
+- AI vs. Reference view now supports zone\_control components for more complete building coverage.
+
+**CO2 Analysis**
+
+- New signal filters in CO2 analysis for more targeted results.
+- CO2 summary now includes action data — start/stop recommendations based on CO2 levels.
+
+**Fixes**
+
+- End date filter is now inclusive of the selected day.
+- Comfort Schedule now correctly reads signal position instead of the legacy "Observables / GT" logic.
+- Predictions data parsing corrected to prevent display errors.
+
+---
+
+## BackOffice & Integration — Partners
+
+**New tools**
+
+- **AI Control Page** — A new diagnostic view in BackOffice that highlights and helps debug AI Control configuration issues per building.
+- **Auto Transformations** — New page to automatically generate signal transformations from component configuration, replacing a previously manual process.
+- **Signal History Gap-fill** — Preview and insert missing data gaps in signal history directly from BackOffice.
+
+**Process & discovery improvements**
+
+- Process UI: "Execute On Demand" queues now auto-refresh; historical read date range options extended to include 3 and 10 years.
+- Discovery failure messages are now surfaced to end users instead of failing silently (NET-1309).
+- AI Control Status added to Signal Viewer in BackOffice.
+- Building form: Google Maps link added with dynamic latitude/longitude updates.
+- Component handling improved with better error logging during discovery processes.
+- WebAPI now supports filtering by signal position groups.
+
+**Integrations**
+
+- **Fabege** — OAuth support added; write and discovery capabilities significantly improved.
+- **Ouman** — Historical read support added; OumanWriter reintroduced; error logging improved for read timeouts.
+- **Siemens Building X** — Write support added via point-values endpoint; discovery enriched with point-group tags and improved HVAC tag aliases for better SignalPosition mapping.
+- **FidelixAnalytics** — Added as a new supported data provider.
+- **Propeye** — Historical read support added.
+- **Yggio / MQTT** — Communicator now refreshes stale tokens before connecting or making requests.
+- **MESAN2g** — Migrated from deprecated v1 to v2 API.
+
+**Fixes**
+
+- CronExpression triggers were not being saved when creating triggers — fixed.
+- Signal Excel upload now correctly updates AI Control Status.
+- Energy upload no longer throws duplicate errors during daylight saving transitions.
+- HTTP request message reuse issue fixed to prevent connection errors.
+- Demo provider now correctly copies components when creating a demo building.
+- Discovery pagination hardened to prevent runaway page loops.
+- Offline threshold and DS time alignment corrected.
+- NET-1175: Percent and ppm units consolidated.
+- AkademiskaHusListener was using the wrong signal when sending data to the AI API — fixed.
+
+---
+
+## Control & Optimization
+
+- Slow lane capacity increased to 6 workers, improving throughput for larger and slower-optimizing buildings.
+- Optimizer resource sizing and memory exit thresholds adjusted for better pod stability.
+- Occupancy schedule rows are now deduplicated before merge to prevent conflicting data.
+- DST spring-forward: time rounding no longer throws a NonExistentTimeError — handled gracefully.
+- On-off aggregation pipeline: memory optimized and broadcast hints removed to prevent OOM crashes on large runs.
+- Zone Asset: Parkland now correctly treated as a Singapore-style zone asset.
+
+---
+
+## Data Platform
+
+- **Daily baseline model training pipeline** introduced — enables more frequent and granular baseline updates.
+- **Daily on-off aggregation Spark job** added, improving on-off signal aggregation reliability.
+- All baseline model consumers migrated to Iceberg (migration complete).
+- New copy script for Iceberg tables across environments, simplifying deployments.
+- Solar radiation: improved error handling when cloud coverage signal is missing.
+- Spark 4.0: updated to use non-deprecated partitioning imports.
+- cleaned\_to\_lake job migrated to Spark for infrastructure consistency.
+- Data validation: new checks for missing min/max values in Os and Vs signals.
+- Infrastructure: nodepool assignments optimized for Airflow and Spark workloads.
+
+---
+
+_Generated from Platform changelog (Release-2026.7) and AI changelog (v2.14.4–v2.16.1) — April 2026_

@@ -8,21 +8,28 @@
     "dark": "#0D9373"
   },
   "navigation": {
-    "groups": [
+    "pages": [
       {
         "group": "Get Started",
-        "pages": ["index", "running"]
+        "pages": [
+          "index",
+          "running"
+        ]
       },
       {
         "group": "Reference",
-        "pages": ["reactions", "troubleshooting"]
+        "pages": [
+          "reactions",
+          "troubleshooting"
+        ]
       },
       {
         "group": "Documentations",
         "pages": [
           "test-docs"
         ]
-      }
+      },
+      "release-notes"
     ]
   },
   "navbar": {
