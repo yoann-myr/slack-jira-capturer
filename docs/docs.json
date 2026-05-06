@@ -1,22 +1,17 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
-  "name": "Jira Capturer Docs",
+  "name": "Slack-to-Jira Capturer",
   "colors": {
     "primary": "#0D9373",
     "light": "#55D799",
     "dark": "#0D9373"
   },
-  "favicon": "/favicon.svg",
   "navigation": {
     "groups": [
       {
-        "group": "Get Started",
-        "pages": ["index", "quickstart"]
-      },
-      {
-        "group": "Essentials",
-        "pages": ["essentials/markdown", "essentials/navigation"]
+        "group": "Documentation",
+        "pages": ["index"]
       }
     ],
     "products": [
@@ -136,17 +131,7 @@
       }
     ]
   },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
-  },
   "navbar": {
-    "links": [
-      {
-        "label": "Support",
-        "href": "mailto:yoann@myrspoven.com"
-      }
-    ],
     "primary": {
       "type": "button",
       "label": "GitHub",
