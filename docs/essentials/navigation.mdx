@@ -1,0 +1,27 @@
+---
+title: "Navigation"
+description: "How the sidebar is configured"
+---
+
+The left sidebar is driven by `navigation.groups` in `docs.json`. Each entry is
+a group with a list of page slugs (the file path under `docs/` without the
+`.mdx` extension).
+
+```json
+"navigation": {
+  "groups": [
+    {
+      "group": "Get Started",
+      "pages": ["index", "quickstart"]
+    },
+    {
+      "group": "Essentials",
+      "pages": ["essentials/markdown", "essentials/navigation"]
+    }
+  ]
+}
+```
+
+To add a page: drop a new `.mdx` file in `docs/`, then list its slug here. Pages
+not referenced in `navigation` are still reachable by URL but won't appear in
+the sidebar.

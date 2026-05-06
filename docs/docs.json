@@ -1,0 +1,45 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "Jira Capturer Docs",
+  "colors": {
+    "primary": "#0D9373",
+    "light": "#55D799",
+    "dark": "#0D9373"
+  },
+  "favicon": "/favicon.svg",
+  "navigation": {
+    "groups": [
+      {
+        "group": "Get Started",
+        "pages": ["index", "quickstart"]
+      },
+      {
+        "group": "Essentials",
+        "pages": ["essentials/markdown", "essentials/navigation"]
+      }
+    ]
+  },
+  "logo": {
+    "light": "/logo/light.svg",
+    "dark": "/logo/dark.svg"
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "Support",
+        "href": "mailto:yoann@myrspoven.com"
+      }
+    ],
+    "primary": {
+      "type": "button",
+      "label": "GitHub",
+      "href": "https://github.com/yoann-myr/slack-jira-capturer"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/yoann-myr/slack-jira-capturer"
+    }
+  }
+}
