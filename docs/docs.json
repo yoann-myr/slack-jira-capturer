@@ -10,11 +10,11 @@
   "fonts": {
     "heading": {
       "family": "Epilogue",
-      "source": "https://fonts.googleapis.com/css2?family=Epilogue:wght@400;600;700&display=swap"
+      "weight": 700
     },
     "body": {
       "family": "Roboto",
-      "source": "https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap"
+      "weight": 400
     }
   },
   "navigation": {
