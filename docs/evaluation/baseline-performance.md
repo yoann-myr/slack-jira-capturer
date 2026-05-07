@@ -1,3 +1,7 @@
+---
+title: "Baseline-performance"
+---
+
 # Baseline Performance
 
 To evaluate the AI's performance, we need to know what the building _would have done_ without AI control. This counterfactual is called the **baseline**. The baseline system trains a model for each signal in a building that predicts the signal's value as a function of outdoor temperature, using historical data from periods when the AI was not in control.
@@ -21,18 +25,18 @@ flowchart LR
     A --> SA[(signal_assessments)]
 ```
 
-The three tasks run sequentially as a single Airflow DAG: `curate_model_data` -> `compute_predictions` -> `compute_assessments`. A fourth table, `signal_assessment_overrides`, is managed separately via the dashboard and is never written by the pipeline.
+The three tasks run sequentially as a single Airflow DAG: `curate_model_data` -\> `compute_predictions` -\> `compute_assessments`. A fourth table, `signal_assessment_overrides`, is managed separately via the dashboard and is never written by the pipeline.
 
 All four tables are consumed downstream by the dashboard and other pipelines.
 
 ### Output tables
 
-| Table                                                  | Description                                                                                                                                                   | Size                                           |
-| ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
-| `myrspoven-core.baselines.training_data`               | The curated reference data the model was trained on. Provides traceability and is used for dashboard scatter plots and debugging.                             | Partitioned by `building_id`                   |
-| `myrspoven-core.baselines.predictions`                 | Precomputed LOWESS predictions at a fixed temperature grid. This _is_ the baseline model -- consumers join against it instead of loading and running a model. | ~200 buildings x ~10 signals x 181 grid points |
-| `myrspoven-core.baselines.signal_assessments`          | Rule-based quality assessment per signal. Indicates whether the baseline for a given signal is trustworthy.                                                   | ~2000 rows total                               |
-| `myrspoven-core.baselines.signal_assessment_overrides` | Human overrides of assessments, managed via the dashboard. Never written by the training pipeline.                                                            | Tiny                                           |
+| Table | Description | Size |
+| --- | --- | --- |
+| `myrspoven-core.baselines.training_data` | The curated reference data the model was trained on. Provides traceability and is used for dashboard scatter plots and debugging. | Partitioned by `building_id` |
+| `myrspoven-core.baselines.predictions` | Precomputed LOWESS predictions at a fixed temperature grid. This _is_ the baseline model -- consumers join against it instead of loading and running a model. | ~200 buildings x ~10 signals x 181 grid points |
+| `myrspoven-core.baselines.signal_assessments` | Rule-based quality assessment per signal. Indicates whether the baseline for a given signal is trustworthy. | ~2000 rows total |
+| `myrspoven-core.baselines.signal_assessment_overrides` | Human overrides of assessments, managed via the dashboard. Never written by the training pipeline. | Tiny |
 
 ### Refresh cadence
 
@@ -74,21 +78,21 @@ Each signal's baseline is modeled using [LOWESS](https://en.wikipedia.org/wiki/L
 
 ### Parameters
 
-| Parameter           | Value                                    | Rationale                                                                                                |
-| ------------------- | ---------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| `frac`              | 0.3                                      | Fraction of data used in each local regression. Produces smooth curves without overfitting.              |
-| Temperature grid    | -40.0 to +50.0 in 0.5 steps (181 points) | Covers Nordic winters through warm summers. At 0.5 resolution, linear interpolation error is negligible. |
-| Minimum data points | 3                                        | Signals with fewer than 3 valid `(t, value)` pairs are skipped (no prediction produced).                 |
+| Parameter | Value | Rationale |
+| --- | --- | --- |
+| `frac` | 0.3 | Fraction of data used in each local regression. Produces smooth curves without overfitting. |
+| Temperature grid | -40.0 to \+50.0 in 0.5 steps (181 points) | Covers Nordic winters through warm summers. At 0.5 resolution, linear interpolation error is negligible. |
+| Minimum data points | 3 | Signals with fewer than 3 valid `(t, value)` pairs are skipped (no prediction produced). |
 
 ### Clipping rules
 
 After computing LOWESS predictions, signal-class-specific clipping is applied to keep values within physically reasonable bounds:
 
-| Signal classes                                                                                       | Clipping rule                                                           |
-| ---------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| `Vs_VSGT`, `VFs_VSGT`, `PVs_VSGT`                                                                    | Clipped to [20, 120] (heating supply temperatures)                      |
+| Signal classes | Clipping rule |
+| --- | --- |
+| `Vs_VSGT`, `VFs_VSGT`, `PVs_VSGT` | Clipped to \[20, 120\] (heating supply temperatures) |
 | `Vs_ZACL`, `Vs_ZAHL`, `Vs_ZAGT`, `Vs_LBGP`, `Vs_KBGT`, `Vs_LBGT`, `VFs_LBGP`, `VFs_KBGT`, `VFs_LBGT`, `PVs_LBGP`, `PVs_LBGT`, `PVs_KBGT` | Clipped to the observed range in the training data `[ref_min, ref_max]` |
-| All other classes (including `DHMs`, `DCMs`, `ELMs`, `Os_deg`, `Os_CO2`)                              | Clipped to `[0, inf)` (values can't be negative)                        |
+| All other classes (including `DHMs`, `DCMs`, `ELMs`, `Os_deg`, `Os_CO2`) | Clipped to `[0, inf)` (values can't be negative) |
 
 ### VSGT base temperature masking
 
@@ -98,13 +102,13 @@ For VSGT signals (heating circuits), predictions at outdoor temperatures **above
 
 Baselines are trained for every signal class present in the `on_off_data` table. No signal class filter is applied during curation -- if it's in the on-off dataset, it gets a baseline.
 
-| Category                     | Signal classes                                                              |
-| ---------------------------- | --------------------------------------------------------------------------- |
-| Variables (Vs)               | `Vs_VSGT`, `Vs_LBGP`, `Vs_LBGT`, `Vs_KBGT`, `Vs_ZAGT`, `Vs_ZACL`, `Vs_ZAHL` |
-| Variables Fixed (VFs)        | `VFs_VSGT`, `VFs_LBGP`, `VFs_LBGT`, `VFs_KBGT`                              |
-| Proportional Variables (PVs) | `PVs_VSGT`, `PVs_LBGP`, `PVs_LBGT`, `PVs_KBGT`                              |
-| Observables (Os)             | `Os_deg`, `Os_CO2`                                                          |
-| Energy meters                | `DHMs`, `DCMs`, `ELMs`                                                      |
+| Category | Signal classes |
+| --- | --- |
+| Variables (Vs) | `Vs_VSGT`, `Vs_LBGP`, `Vs_LBGT`, `Vs_KBGT`, `Vs_ZAGT`, `Vs_ZACL`, `Vs_ZAHL` |
+| Variables Fixed (VFs) | `VFs_VSGT`, `VFs_LBGP`, `VFs_LBGT`, `VFs_KBGT` |
+| Proportional Variables (PVs) | `PVs_VSGT`, `PVs_LBGP`, `PVs_LBGT`, `PVs_KBGT` |
+| Observables (Os) | `Os_deg`, `Os_CO2` |
+| Energy meters | `DHMs`, `DCMs`, `ELMs` |
 
 ## Signal Assessments
 
@@ -125,13 +129,13 @@ The assessment is either `"OK"` or a string describing the first failing rule (e
 
 **Additional rules per signal class:**
 
-| Signal class                       | Additional rules                                                                                                                                                                                                                          |
-| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| VSGT (any class containing `VSGT`) | Heating temperature range >= 10 (buckets where `t_max <= 12`). No more than 1 noisy cold-weather bucket (where `t_max <= -3` and `v_range > 15`). Negative OLS slope (cold weather should produce higher supply temps). Value range >= 5. |
-| `DHMs`, `DCMs`, `ELMs`             | Value range >= 10.                                                                                                                                                                                                                        |
-| LBGT, KBGT                         | Value range >= 0.5.                                                                                                                                                                                                                       |
-| ZACL, ZAHL                         | Value range >= 0.9.                                                                                                                                                                                                                       |
-| LBGP, ZAGT, and all others         | General rules only.                                                                                                                                                                                                                       |
+| Signal class | Additional rules |
+| --- | --- |
+| VSGT (any class containing `VSGT`) | Heating temperature range \>= 10 (buckets where `t_max <= 12`). No more than 1 noisy cold-weather bucket (where `t_max <= -3` and `v_range > 15`). Negative OLS slope (cold weather should produce higher supply temps). Value range \>= 5. |
+| `DHMs`, `DCMs`, `ELMs` | Value range \>= 10. |
+| LBGT, KBGT | Value range \>= 0.5. |
+| ZACL, ZAHL | Value range \>= 0.9. |
+| LBGP, ZAGT, and all others | General rules only. |
 
 ### Model fit metric
 
