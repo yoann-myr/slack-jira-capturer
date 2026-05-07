@@ -2,7 +2,7 @@
 title: "Baseline-performance"
 ---
 
-# Baseline Performance
+# Baseline performance
 
 To evaluate the AI's performance, we need to know what the building _would have done_ without AI control. This counterfactual is called the **baseline**. The baseline system trains a model for each signal in a building that predicts the signal's value as a function of outdoor temperature, using historical data from periods when the AI was not in control.
 
@@ -42,7 +42,7 @@ All four tables are consumed downstream by the dashboard and other pipelines.
 
 The training DAG runs **weekly** (Mondays 08:00 UTC). Each run does a full overwrite of `training_data`, `predictions`, and `signal_assessments`. Human overrides are never touched by the pipeline.
 
-## Training Data Curation
+## Training data curation
 
 The first task (`curate_model_data`) selects and filters reference data from the `on_off_data` table. The goal is to get a clean, representative dataset of what each signal does when the AI is _not_ in control.
 
@@ -66,7 +66,7 @@ The algorithm works by scanning backwards from the newest data point:
 
 If coverage never reaches 90%, or the temperature range is zero (constant signal), all data is kept.
 
-## The LOWESS Model
+## The LOWESS model
 
 Each signal's baseline is modeled using [LOWESS](https://en.wikipedia.org/wiki/Local_regression) (Locally Weighted Scatterplot Smoothing) -- a non-parametric regression that fits the relationship between outdoor temperature and signal value.
 
@@ -98,7 +98,7 @@ After computing LOWESS predictions, signal-class-specific clipping is applied to
 
 For VSGT signals (heating circuits), predictions at outdoor temperatures **above** the building's base temperature are set to NULL. The base temperature is the outdoor temperature above which the building no longer needs heating -- predictions above it are meaningless. The base temperature is sourced from the Meter Data Pipeline.
 
-## Signal Coverage
+## Signal coverage
 
 Baselines are trained for every signal class present in the `on_off_data` table. No signal class filter is applied during curation -- if it's in the on-off dataset, it gets a baseline.
 
@@ -110,7 +110,7 @@ Baselines are trained for every signal class present in the `on_off_data` table.
 | Observables (Os) | `Os_deg`, `Os_CO2` |
 | Energy meters | `DHMs`, `DCMs`, `ELMs` |
 
-## Signal Assessments
+## Signal assessments
 
 Not every signal has enough reference data to produce a trustworthy baseline. The assessment pipeline evaluates each signal's data quality using rule-based checks and produces a pass/fail verdict stored in `signal_assessments`.
 
