@@ -8,7 +8,7 @@
     "dark": "#0D9373"
   },
   "navigation": {
-    "pages": [
+    "groups": [
       {
         "group": "Get Started",
         "pages": [
@@ -29,7 +29,14 @@
           "test-docs"
         ]
       },
-      "release-notes"
+      {
+        "group": "Release-Notes",
+        "pages": [
+          "2026_4",
+          "mars-2026",
+          "aaaa"
+        ]
+      }
     ]
   },
   "navbar": {
