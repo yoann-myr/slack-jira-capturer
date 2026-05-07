@@ -36,6 +36,16 @@
           "mars-2026",
           "aaaa"
         ]
+      },
+      {
+        "group": "Evaluation",
+        "pages": [
+          "evaluation/index",
+          "evaluation/baseline-performance",
+          "evaluation/climate",
+          "evaluation/setpoints",
+          "evaluation/energy"
+        ]
       }
     ]
   },
