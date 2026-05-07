@@ -44,7 +44,7 @@
         "pages": [
           "2026_4",
           "mars-2026",
-          "aaaa"
+          "2026-02"
         ]
       },
       {
@@ -52,7 +52,8 @@
         "pages": [
           "evaluation/index",
           "evaluation/baseline-performance"
-        ]
+        ],
+        "hidden": true
       }
     ]
   },
