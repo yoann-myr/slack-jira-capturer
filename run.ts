@@ -213,21 +213,33 @@ async function getReactionCandidates(input: {
     });
   }
 
-  // Dedup: drop candidates whose permalink is already filed.
-  // Slack permalinks vary by query string (?thread_ts=...&cid=...) depending
-  // on how they were generated — strip query/hash on both sides to compare
-  // canonically.
+  // Dedup: skip candidates where the bot has already posted a confirmation
+  // reply in the thread. The bot's reply is authoritative and catches tickets
+  // we created in any prior run, regardless of how they ended up in Jira.
   if (candidates.length === 0) return { candidates };
-  const filed = await findFiledPermalinks();
-  const fresh = candidates.filter((c) => !filed.has(normalizePermalink(c.permalink)));
+  const fresh: ReactionCandidate[] = [];
+  for (const c of candidates) {
+    if (await hasBotConfirmation(c.slack_channel_id, c.slack_ts)) continue;
+    fresh.push(c);
+  }
   console.log(
     `[dedup] ${candidates.length} candidates, ${candidates.length - fresh.length} already filed, ${fresh.length} fresh`,
   );
   return { candidates: fresh };
 }
 
-function normalizePermalink(url: string): string {
-  return url.split(/[?#]/)[0];
+const BOT_CONFIRMATION_RE = /Created a (Bug|Idea) from this message:/;
+
+async function hasBotConfirmation(channel: string, thread_ts: string): Promise<boolean> {
+  const resp = await slackApi<{ messages?: SlackMessageRaw[] }>(
+    "conversations.replies",
+    { channel, ts: thread_ts, limit: "50" },
+  );
+  for (const m of resp.messages ?? []) {
+    if (m.ts === thread_ts) continue;
+    if (m.text && BOT_CONFIRMATION_RE.test(m.text)) return true;
+  }
+  return false;
 }
 
 // =================== Atlassian ===================
@@ -253,35 +265,6 @@ async function atlassianApi(
   const text = await resp.text();
   if (!resp.ok) throw new Error(`Atlassian ${method} ${path} → ${resp.status}: ${text}`);
   return text ? JSON.parse(text) : null;
-}
-
-// ADF → plain text walker
-function adfToText(node: unknown): string {
-  if (!node || typeof node !== "object") return "";
-  const n = node as { type?: string; text?: string; content?: unknown[] };
-  if (n.type === "text" && typeof n.text === "string") return n.text;
-  if (Array.isArray(n.content)) return n.content.map(adfToText).join(" ");
-  return "";
-}
-
-// Find Slack permalinks already filed as MPR Ideas or NET Bugs in the last 7 days.
-async function findFiledPermalinks(): Promise<Set<string>> {
-  const jql =
-    '((project = MPR AND issuetype = Idea) OR (project = NET AND issuetype = Bug)) ' +
-    'AND created >= -7d AND description ~ "slack.com"';
-  const result = (await atlassianApi(
-    "GET",
-    `/rest/api/3/search/jql?jql=${encodeURIComponent(jql)}&fields=description&maxResults=200`,
-  )) as { issues?: { fields: { description: unknown } }[] };
-
-  const filed = new Set<string>();
-  // Match permalinks including any query string, then normalize.
-  const re = /https:\/\/[\w-]+\.slack\.com\/archives\/[A-Z0-9]+\/p\d+\S*/g;
-  for (const issue of result.issues ?? []) {
-    const text = adfToText(issue.fields.description);
-    for (const m of text.matchAll(re)) filed.add(normalizePermalink(m[0]));
-  }
-  return filed;
 }
 
 async function discoverIdeaFields(input: { project_key: string }) {
