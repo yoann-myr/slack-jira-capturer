@@ -2,8 +2,9 @@ name: Capture Slack ideas/bugs
 
 on:
   schedule:
-    # 08:00 UTC daily ≈ 09:00 (winter) / 10:00 (summer) Stockholm
-    - cron: "0 8 * * *"
+    # 07:17 UTC daily ≈ 08:17 (winter) / 09:17 (summer) Stockholm.
+    # Off the top-of-hour to reduce GitHub Actions cron queue delays.
+    - cron: "17 7 * * *"
   workflow_dispatch:
 
 jobs:
